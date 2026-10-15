@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+
+# Secrets and local settings (never commit these)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Runtime data: database, customer uploads, models, saved designs
+platform/data/
+*.db
+*.sqlite3
+
+# Node (if used later)
+node_modules/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Claude Code local files and scratch
+.claude/
+t_preview.html
+*.log

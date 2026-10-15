@@ -56,7 +56,7 @@ def init_db() -> None:
 SEED: dict[str, Any] = {
     "slug": "custom-embossed-wristband",
     "name": "Custom Embossed Wristbands",
-    "model": {"type": "procedural-band", "url": None},
+    "model": {"type": "template", "template": "band", "url": None},
     "sizes": [{"id": "1/2", "label": '1/2"', "mm": 12.7}, {"id": "3/4", "label": '3/4"', "mm": 19}, {"id": "1", "label": '1"', "mm": 25.4}],
     "colors": [{"name": n, "hex": h} for n, h in [("Blue", "#1d6fe8"), ("Cyan", "#1fb5e8"), ("Black", "#1b1b1b"), ("Red", "#d62828"),
                                                   ("Green", "#2a9d3f"), ("Yellow", "#facc15"), ("Orange", "#f97316"), ("Purple", "#7e3ff2"), ("White", "#f4f4f4")]],

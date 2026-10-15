@@ -3,8 +3,8 @@
 import * as THREE from '../vendor/three.module.js';
 import { OrbitControls } from '../vendor/addons/OrbitControls.js';
 import { GLTFLoader } from '../vendor/addons/GLTFLoader.js';
+import { templateFor } from './templates.js';
 
-const MM = 0.05;               // 1mm -> scene units (procedural band only)
 const CANVAS_W = 4096;
 const lum = h => { const n = parseInt(h.slice(1), 16); return (0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255; };
 const mix = (h, t, a) => { // mix hex with hex t by a
@@ -58,24 +58,15 @@ export class Customizer extends EventTarget {
     if (m.type === 'glb' && m.url) {
       const gltf = await new GLTFLoader().loadAsync(m.url);
       this.root.add(gltf.scene);
-    } else this.root.add(this.buildBand());
+    } else {
+      const tpl = templateFor(m);
+      if (!tpl) throw new Error('Unknown product template: ' + (m.template || m.type));
+      const size = this.product.sizes.find(s => s.id === this.state.size);
+      this.root.add(tpl.build({ size }));
+    }
     this.collect();
     this.fitCamera();
     this.redraw();
-  }
-
-  buildBand() {
-    const g = new THREE.Group();
-    const size = this.product.sizes.find(s => s.id === this.state.size) || { mm: 12.7 };
-    const R = 29 * MM, H = size.mm * MM, T = 2.2 * MM;
-    const mat = () => new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .42, metalness: 0 });
-    const outer = new THREE.Mesh(new THREE.CylinderGeometry(R + T, R + T, H, 160, 1, true), mat()); outer.name = 'band_outer';
-    const inner = new THREE.Mesh(new THREE.CylinderGeometry(R, R, H, 160, 1, true), mat()); inner.name = 'band_inner'; inner.material.side = THREE.BackSide;
-    const rim = (y, up) => { const r = new THREE.Mesh(new THREE.RingGeometry(R, R + T, 160, 1), mat()); r.name = 'band_rim'; r.rotation.x = up ? -Math.PI / 2 : Math.PI / 2; r.position.y = y; return r; };
-    g.add(outer, inner, rim(H / 2, true), rim(-H / 2, false));
-    g.rotation.y = -Math.PI / 2;   // put u=.25 (middle of the "front" half) facing the camera
-    g.userData.aspect = (2 * Math.PI * (R + T)) / H;
-    return g;
   }
 
   collect() {
