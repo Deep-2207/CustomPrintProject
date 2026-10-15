@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Product admin</title><link rel="stylesheet" href="css/app.css">
+<style>textarea{width:100%;height:420px;font:13px/1.4 Consolas,monospace;padding:10px;border:1px solid var(--line);border-radius:8px}
+.box{border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px;background:var(--soft)}#log{white-space:pre-wrap;font-size:13px}</style></head>
+<body><main class="wrap"><h1>Product admin</h1>
+<div class="box"><label>Admin key <input type="text" id="key" placeholder="ADMIN_KEY"></label></div>
+<div class="box"><h3>1. Upload a 3D model (.glb)</h3><input type="file" id="glb" accept=".glb">
+ <p class="hint">The model is scanned and every mesh becomes a suggested printable zone. Remove the ones you don't want, and set character limits and print style.
+ <b>Zone u0/u1</b> = the part of the mesh's UV width the zone covers (0–1). <b>aspect</b> = surface width ÷ height, so text isn't stretched.</p><div id="log"></div></div>
+<div class="box"><h3>2. Product definition (JSON)</h3><textarea id="json" spellcheck="false"></textarea>
+ <p><button class="btn" id="save">Save product</button> <a id="open" href="#" target="_blank"></a></p><div id="res" class="errs"></div></div>
+</main>
+<script type="module">
+import * as THREE from './vendor/three.module.js';
+import { GLTFLoader } from './vendor/addons/GLTFLoader.js';
+const $ = s => document.querySelector(s), key = () => $('#key').value;
+fetch('/api/products/custom-embossed-wristband').then(r => r.json()).then(p => $('#json').value = JSON.stringify(p, null, 2));
+
+$('#glb').onchange = async e => {
+  const f = e.target.files[0]; if (!f) return; $('#log').textContent = 'Uploading…';
+  const fd = new FormData(); fd.append('file', f);
+  const r = await fetch('/api/models', { method: 'POST', headers: { 'x-admin-key': key() }, body: fd }), j = await r.json();
+  if (!r.ok) return $('#log').textContent = j.detail || 'Upload failed';
+  const gltf = await new GLTFLoader().loadAsync(j.url), meshes = [];
+  gltf.scene.traverse(o => { if (o.isMesh) {
+    const uv = o.geometry.attributes.uv, tris = (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    meshes.push({ name: o.name || '(unnamed)', uv: !!uv, tris });
+  }});
+  $('#log').textContent = `Uploaded ${(j.bytes / 1048576).toFixed(1)} MB\n` + meshes.map(m => `• ${m.name}: ${m.tris} triangles, ${m.uv ? 'UVs ok' : 'NO UVs — cannot be printed on'}`).join('\n') +
+    (meshes.reduce((a, m) => a + m.tris, 0) > 200000 ? '\n⚠ Very heavy model (>200k triangles): compress for mobile.' : '');
+  const p = JSON.parse($('#json').value);
+  p.model = { type: 'glb', url: j.url };
+  p.sizes = []; p.body_meshes = meshes.map(m => m.name);
+  p.zones = meshes.filter(m => m.uv && m.name !== '(unnamed)').slice(0, 4).map((m, i) => ({ id: 'zone' + (i + 1), label: 'Message ' + (i + 1), mesh: m.name, style: 'print', max_chars: 30, allow_images: true, u0: 0, u1: 1, aspect: 4 }));
+  $('#json').value = JSON.stringify(p, null, 2);
+};
+$('#save').onclick = async () => {
+  let p; try { p = JSON.parse($('#json').value); } catch (e) { return $('#res').textContent = 'Invalid JSON: ' + e.message; }
+  const r = await fetch('/api/products/' + p.slug, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'x-admin-key': key() }, body: JSON.stringify(p) });
+  const j = await r.json();
+  if (!r.ok) return $('#res').textContent = typeof j.detail === 'string' ? j.detail : JSON.stringify(j.detail);
+  $('#res').textContent = ''; $('#open').href = '/?product=' + p.slug; $('#open').textContent = 'Saved — open product page';
+};
+</script></body></html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Custom Embossed Wristbands – Customizer demo</title>
+<link rel="stylesheet" href="wb-customizer.css">
+<style>
+body{margin:0;font-family:system-ui,Arial,sans-serif;background:#fff;color:#222}
+main{max-width:1180px;margin:0 auto;padding:20px 16px}
+.bar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:18px 0;padding:14px;border:1px solid #dcdfe4;border-radius:12px}
+.bar label{font-weight:600}.bar input,.bar select{padding:8px;border:1px solid #dcdfe4;border-radius:8px;font:inherit}
+.bar .total{margin-left:auto;font-size:18px;font-weight:700}
+.add{background:#0b5fff;color:#fff;border:0;border-radius:8px;padding:12px 26px;font:inherit;font-weight:700;cursor:pointer}
+.add:disabled{background:#9aa;cursor:not-allowed}
+#msg{margin:8px 0;color:#c62828}
+.cart{margin-top:30px}.cart li{margin:10px 0;padding:10px;border:1px solid #dcdfe4;border-radius:10px;list-style:none}
+.cart ul{padding:0}.cart small{display:block;color:#555}
+.cart button{margin-right:6px}
+</style></head>
+<body><main>
+<h1>Custom Embossed Wristbands</h1>
+<p>Demo harness: the customizer below is the drop-in component. Size, quantity and pricing here stand in for the site's existing controls.</p>
+
+<div class="bar">
+  <label>Size <select id="size"><option value="1/4">1/4"</option><option value="1/2" selected>1/2"</option><option value="3/4">3/4"</option><option value="1">1"</option><option value="1.5">1.5"</option><option value="2">2"</option></select></label>
+  <label>Quantity <input id="qty" type="number" min="1" value="100" style="width:90px"></label>
+  <span class="total" id="total"></span>
+</div>
+
+<div id="wb-customizer"></div>
+
+<div id="msg" role="alert"></div>
+<p><button class="add" id="add">Add to cart</button></p>
+
+<section class="cart"><h2>Cart</h2><ul id="cart"></ul></section>
+</main>
+<script src="wb-customizer.js"></script>
+<script>
+  const PRICE = {'1/4':14,'1/2':16,'3/4':18,'1':20,'1.5':24,'2':28}; // placeholder ₹ each
+  const $ = s => document.querySelector(s);
+  const editId = new URLSearchParams(location.search).get('edit');
+  let initial = null;
+  if (editId) { const it = WBCustomizer.Cart.all().find(x => x.id === editId); if (it) { initial = it.config._state; $('#size').value = it.config.size; $('#qty').value = it.qty; } }
+
+  const wb = WBCustomizer.mount('#wb-customizer', { style: 'embossed', size: $('#size').value, initial });
+  const total = () => $('#total').textContent = 'Total: ₹' + (PRICE[$('#size').value] * (+$('#qty').value || 0)).toFixed(2);
+  $('#size').onchange = e => { wb.setSize(e.target.value); total(); };
+  $('#qty').oninput = total; total();
+
+  $('#add').onclick = () => {
+    const cfg = wb.getConfig(), qty = +$('#qty').value;
+    if (!qty || qty < 1) return $('#msg').textContent = 'Enter a valid quantity.';
+    if (!wb.isValid()) return $('#msg').textContent = 'Please fix the message errors above first.';
+    if (!cfg.messages.front.text && !confirm('No message entered. Add a blank wristband?')) return;
+    $('#msg').textContent = '';
+    const item = { qty, unit: PRICE[cfg.size], config: cfg };
+    editId ? WBCustomizer.Cart.update(editId, item) : WBCustomizer.Cart.add(item);
+    if (editId) history.replaceState(null, '', location.pathname);
+    renderCart();
+  };
+  function renderCart() {
+    $('#cart').innerHTML = WBCustomizer.Cart.all().map(i => `<li><b>Custom Embossed Wristbands × ${i.qty}</b> — ₹${(i.qty * i.unit).toFixed(2)}
+      ${WBCustomizer.Cart.describe(i.config).map(l => `<small>${l.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]))}</small>`).join('')}
+      <p><button onclick="location.search='?edit=${i.id}'">Edit design</button><button onclick="WBCustomizer.Cart.remove('${i.id}');renderCart()">Remove</button></p></li>`).join('') || '<li>Cart is empty.</li>';
+  }
+  renderCart();
+</script></body></html>
