@@ -44,12 +44,35 @@ class Browser:
                     raise RuntimeError(f"{method}: {msg['error']}")
                 return msg.get("result", {})
 
+    async def resize(self, w, h):
+        await self.send("Emulation.setDeviceMetricsOverride", width=w, height=h, deviceScaleFactor=1, mobile=False)
+
     async def goto(self, url, wait=4.0):
         await self.send("Page.navigate", url=url)
         await asyncio.sleep(wait)
 
     async def js(self, expr):
         r = await self.send("Runtime.evaluate", expression=expr, awaitPromise=True, returnByValue=True)
+        if "exceptionDetails" in r:
+            raise RuntimeError(r["exceptionDetails"].get("exception", {}).get("description", str(r["exceptionDetails"])))
+        return r["result"].get("value")
+
+    async def frame_js(self, url_part, expr):
+        """Run JavaScript inside the iframe whose address contains url_part. It runs in an isolated world: it can read and
+        click the page's elements (their event handlers still run normally) but cannot touch the page's own variables."""
+        def find(node):
+            for ch in node.get("childFrames", []):
+                if url_part in ch["frame"]["url"]:
+                    return ch["frame"]["id"]
+                hit = find(ch)
+                if hit:
+                    return hit
+        tree = (await self.send("Page.getFrameTree"))["frameTree"]
+        fid = find(tree)
+        if not fid:
+            raise RuntimeError(f"no iframe with {url_part}")
+        ctx = (await self.send("Page.createIsolatedWorld", frameId=fid, worldName="test"))["executionContextId"]
+        r = await self.send("Runtime.evaluate", expression=expr, awaitPromise=True, returnByValue=True, contextId=ctx)
         if "exceptionDetails" in r:
             raise RuntimeError(r["exceptionDetails"].get("exception", {}).get("description", str(r["exceptionDetails"])))
         return r["result"].get("value")

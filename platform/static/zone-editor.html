@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print areas | PreviewPrint</title>
+<link rel="stylesheet" href="/css/dashboard.css"><link rel="stylesheet" href="/css/zone-editor.css">
+</head><body>
+<header class="zbar">
+  <a href="/dashboard.html" id="back">&larr; Back to product</a>
+  <h1 id="title">Print areas</h1>
+  <div class="row"><span class="muted" id="dirty" aria-live="polite"></span><button class="btn" id="save" type="button">Save print areas</button></div>
+</header>
+<div class="errs" id="err" role="alert" hidden style="margin:12px 18px"></div>
+<div class="zwrap">
+  <section class="zleft" aria-label="3D model">
+    <div class="zstage" id="stage"></div>
+    <p class="muted" style="margin:8px 2px">Click a part of the model to select it. Drag to rotate, scroll to zoom. The dashed rectangles are the print areas.</p>
+    <div class="row"><button class="btn sm ghost" type="button" data-view="front">Front</button><button class="btn sm ghost" type="button" data-view="back">Back</button></div>
+  </section>
+  <aside class="zright">
+    <section class="card"><h2>1. Pick a part</h2><div id="parts"></div></section>
+    <section class="card"><h2>2. Print areas</h2><div id="zones"></div>
+      <button class="btn sm" type="button" id="add">Add a print area</button><p class="muted" id="add-note" style="margin:6px 0 0"></p></section>
+    <section class="card" id="adjust" hidden><h2>3. Adjust the selected area</h2>
+      <div class="two"><div class="f"><label for="z-label">Name</label><input id="z-label" type="text" maxlength="60"></div>
+        <div class="f"><label for="z-style">How it is made</label><select id="z-style"><option value="print">Print (flat colour)</option><option value="emboss">Emboss (raised)</option><option value="deboss">Deboss (engraved)</option></select></div></div>
+      <div class="two"><div class="f"><label for="z-chars">Max letters</label><input id="z-chars" type="number" min="1" max="500"></div>
+        <div class="f"><label for="z-lines">Max lines</label><input id="z-lines" type="number" min="1" max="10"></div></div>
+      <div class="two"><div class="f"><label for="z-u0">Left edge <span id="v-u0"></span></label><input id="z-u0" type="range" min="0" max="100"></div>
+        <div class="f"><label for="z-u1">Right edge <span id="v-u1"></span></label><input id="z-u1" type="range" min="0" max="100"></div>
+        <div class="f"><label for="z-y0">Top edge <span id="v-y0"></span></label><input id="z-y0" type="range" min="0" max="100"></div>
+        <div class="f"><label for="z-y1">Bottom edge <span id="v-y1"></span></label><input id="z-y1" type="range" min="0" max="100"></div></div>
+      <div class="f"><label for="z-aspect">Shape of the surface (width &divide; height)</label>
+        <div class="row"><input id="z-aspect" type="number" min="0.05" max="100" step="0.01" style="max-width:130px"><button class="btn sm ghost" type="button" id="auto">Work it out from the model</button></div>
+        <small>Keeps letters from looking stretched. "Work it out" measures the model's surface.</small></div>
+      <button class="btn sm danger" type="button" id="del">Delete this area</button></section>
+    <section class="card"><h2>Preview text</h2><div class="f"><input id="sample" type="text" maxlength="40" value="Your text" aria-label="Preview text"><small>Typed into every print area so you can see where it lands.</small></div>
+      <canvas id="uv" width="520" height="520" aria-label="UV map of the selected part"></canvas><p class="muted" style="margin:4px 0 0">The flat map of the selected part (grey) with the print areas on it (blue).</p></section>
+  </aside>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/js/zone-editor.js"></script>
+</body></html>

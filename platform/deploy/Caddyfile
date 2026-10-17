@@ -1,0 +1,9 @@
+# {$DOMAIN} comes from .env. Caddy fetches and renews the HTTPS certificate on its own
+# (the domain must already point at this server, and ports 80 and 443 must be open).
+{$DOMAIN} {
+	encode gzip
+	request_body {
+		max_size 30MB
+	}
+	reverse_proxy app:8000
+}

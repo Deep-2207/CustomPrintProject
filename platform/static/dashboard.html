@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Dashboard | PreviewPrint</title>
+<link rel="stylesheet" href="/css/dashboard.css">
+</head><body>
+<a class="skip" href="#view">Skip to content</a>
+<div class="shell">
+  <aside class="side">
+    <a class="brand" href="/">PreviewPrint</a>
+    <nav aria-label="Dashboard">
+      <a href="#/products" data-nav="products">Products</a>
+      <a href="#/models" data-nav="models">3D models</a>
+      <a href="#/designs" data-nav="designs">Designs</a>
+      <a href="#/embed" data-nav="embed">Embed on your site</a>
+      <a href="#/usage" data-nav="usage">Usage and plan</a>
+      <a href="#/account" data-nav="account">Account</a>
+    </nav>
+    <div class="who"><b id="who-shop"></b><span id="who-name"></span><button class="link" id="logout" type="button">Log out</button></div>
+  </aside>
+  <main class="content">
+    <div id="banner"></div>
+    <div id="view" tabindex="-1"><p class="muted">Loading…</p></div>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/js/dashboard.js"></script>
+</body></html>

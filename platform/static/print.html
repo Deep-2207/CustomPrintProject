@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Print files | PreviewPrint</title>
+<link rel="stylesheet" href="/css/dashboard.css">
+<link rel="stylesheet" href="/css/print.css">
+</head><body>
+<main class="pwrap">
+  <p><a href="/dashboard.html#/designs">&larr; All designs</a></p>
+  <div class="errs" id="err" role="alert" hidden></div>
+  <div id="page"><p class="muted">Loading the design&hellip;</p></div>
+</main>
+<div id="stage" class="offscreen" aria-hidden="true"></div>
+<div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+<script type="module" src="/js/print.js"></script>
+</body></html>

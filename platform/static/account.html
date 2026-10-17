@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seller log in | PreviewPrint</title>
+<link rel="stylesheet" href="/css/landing.css"><link rel="stylesheet" href="/css/account.css">
+</head><body>
+<header class="top"><div class="in"><a class="brand" href="/">PreviewPrint</a><nav><a href="/">Home</a></nav></div></header>
+<main class="auth">
+  <div class="tabs" role="tablist" aria-label="Account">
+    <button role="tab" id="tab-login" class="tab on" aria-selected="true" aria-controls="login">Log in</button>
+    <button role="tab" id="tab-register" class="tab" aria-selected="false" aria-controls="register">Create a seller account</button>
+  </div>
+
+  <form id="login" novalidate aria-labelledby="tab-login">
+    <div class="f"><label for="l-email">Email</label><input id="l-email" type="email" autocomplete="username" required></div>
+    <div class="f"><label for="l-pass">Password</label><input id="l-pass" type="password" autocomplete="current-password" required></div>
+    <div class="msg" id="l-err" role="alert" hidden></div>
+    <button class="cta" type="submit">Log in</button>
+  </form>
+
+  <form id="register" novalidate hidden aria-labelledby="tab-register">
+    <p class="sub">New accounts are checked by our team before products can be created. You can log in and look around straight away.</p>
+    <div class="f"><label for="r-business">Shop or business name</label><input id="r-business" maxlength="120" autocomplete="organization" required></div>
+    <div class="f"><label for="r-slug">Your shop link name</label>
+      <input id="r-slug" maxlength="40" pattern="[a-z0-9\-]{3,40}" autocomplete="off" aria-describedby="r-slug-help">
+      <small id="r-slug-help">Customers will open <b id="slug-preview">/s/your-shop/…</b>. Letters, numbers and dashes only.</small></div>
+    <div class="f"><label for="r-name">Your name</label><input id="r-name" maxlength="80" autocomplete="name" required></div>
+    <div class="f"><label for="r-email">Email</label><input id="r-email" type="email" maxlength="254" autocomplete="email" required></div>
+    <div class="f"><label for="r-pass">Password</label><input id="r-pass" type="password" minlength="10" maxlength="128" autocomplete="new-password" required aria-describedby="r-pass-help">
+      <small id="r-pass-help">At least 10 characters. A short phrase of a few words is easy to remember and hard to guess.</small></div>
+    <div class="msg" id="r-err" role="alert" hidden></div>
+    <button class="cta" type="submit">Create account</button>
+  </form>
+</main>
+<script type="module" src="/js/account.js"></script>
+</body></html>

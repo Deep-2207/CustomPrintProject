@@ -100,6 +100,9 @@ export class Customizer extends EventTarget {
         const b = document.createElement('canvas'); b.width = c.width; b.height = c.height;
         const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
         const bt = new THREE.CanvasTexture(b);
+        // glTF files measure v from the TOP of the image; the built-in shapes (three.js geometry) measure it from the bottom.
+        const fromTop = this.product.model.type === 'glb';
+        tex.flipY = bt.flipY = !fromTop;
         o.material.map = tex; o.material.bumpMap = bt; o.material.bumpScale = 1.6; o.material.color.set(0xffffff);
         this.meshes.set(o.name, { mesh: o, canvas: c, bump: b, tex, bt });
       }
@@ -146,24 +149,52 @@ export class Customizer extends EventTarget {
       const W = m.canvas.width, H = m.canvas.height, c = m.canvas.getContext('2d'), b = m.bump.getContext('2d');
       c.fillStyle = body; c.fillRect(0, 0, W, H); b.fillStyle = '#808080'; b.fillRect(0, 0, W, H);
       for (const z of this.product.zones.filter(z => z.mesh === name)) {
-        const s = st.zones[z.id], box = this.zoneBox(z, W, H);
-        c.save(); b.save(); [c, b].forEach(k => { k.beginPath(); k.rect(box.x, box.y, box.w, box.h); k.clip(); });
-        if (s.image) {
-          const im = this.image(s.image.url);
-          if (im.complete && im.naturalWidth) {
-            const sc = s.image.scale * box.h * 1.2 / Math.max(im.naturalWidth, im.naturalHeight);
-            c.translate(box.x + s.image.x * box.w, box.y + s.image.y * box.h); c.rotate((s.image.rot || 0) * Math.PI / 180);
-            c.drawImage(im, -im.naturalWidth * sc / 2, -im.naturalHeight * sc / 2, im.naturalWidth * sc, im.naturalHeight * sc);
-          }
-        }
-        c.restore(); b.restore();
-        s.stickers.forEach(k => this.drawSticker(c, b, z, k, box, body, st.imprintColor));
-        if (s.text) this.drawText(c, b, z, s, box, body, st.imprintColor);
+        const box = this.zoneBox(z, W, H);
+        this.drawZone(c, b, z, box, body);
         if (z.guide && this.showGuides) this.drawGuide(c, box, body);
       }
       m.tex.needsUpdate = true; m.bt.needsUpdate = true;
     }
     this.dispatchEvent(new CustomEvent('redraw'));
+  }
+
+  // Everything the customer put in one print area, drawn into the rectangle `box` of canvas c
+  // (colour) and b (relief map for emboss / deboss). Used for the 3D texture and for print files.
+  drawZone(c, b, z, box, body) {
+    const st = this.state, s = st.zones[z.id];
+    c.save(); b.save(); [c, b].forEach(k => { k.beginPath(); k.rect(box.x, box.y, box.w, box.h); k.clip(); });
+    if (s.image) {
+      const im = this.image(s.image.url);
+      if (im.complete && im.naturalWidth) {
+        const sc = s.image.scale * box.h * 1.2 / Math.max(im.naturalWidth, im.naturalHeight);
+        c.translate(box.x + s.image.x * box.w, box.y + s.image.y * box.h); c.rotate((s.image.rot || 0) * Math.PI / 180);
+        c.drawImage(im, -im.naturalWidth * sc / 2, -im.naturalHeight * sc / 2, im.naturalWidth * sc, im.naturalHeight * sc);
+      }
+    }
+    c.restore(); b.restore();
+    s.stickers.forEach(k => this.drawSticker(c, b, z, k, box, body, st.imprintColor));
+    if (s.text) this.drawText(c, b, z, s, box, body, st.imprintColor);
+  }
+
+  // A print file for one area: transparent PNG of exactly what is printed (no product colour, no guides),
+  // plus a grey relief map for emboss / deboss areas. Width is in pixels; height follows the area's real
+  // shape (print_w_mm x print_h_mm when the seller has set it, else the proportions on the product).
+  async renderZone(z, width) {
+    const m = this.meshes.get(z.mesh), aspect = z.print_w_mm && z.print_h_mm ? z.print_w_mm / z.print_h_mm
+      : m ? (z.u1 - z.u0) * m.canvas.width / (((z.y1 == null ? 1 : z.y1) - (z.y0 || 0)) * m.canvas.height)
+        : (z.u1 - z.u0) * (z.aspect || 4) / ((z.y1 == null ? 1 : z.y1) - (z.y0 || 0));
+    const W = Math.round(width), H = Math.max(8, Math.round(width / aspect)), box = { x: 0, y: 0, w: W, h: H };
+    const color = document.createElement('canvas'), relief = document.createElement('canvas');
+    color.width = relief.width = W; color.height = relief.height = H;
+    const c = color.getContext('2d'), b = relief.getContext('2d');
+    for (let pass = 0; pass < 4; pass++) {                       // pictures and stickers load in the background: draw, wait, draw again
+      c.clearRect(0, 0, W, H); b.fillStyle = '#808080'; b.fillRect(0, 0, W, H);
+      this.drawZone(c, b, z, box, this.state.bodyColor);
+      const pending = [...this.imgCache.values()].filter(im => !im.complete);
+      if (!pending.length) break;
+      await Promise.all(pending.map(im => new Promise(r => { im.addEventListener('load', r); im.addEventListener('error', r); })));
+    }
+    return { color, relief: z.style === 'print' ? null : relief, width: W, height: H, aspect };
   }
 
   // Dashed outline of the printable area. Shown on screen only; never in the saved preview.

@@ -18,6 +18,10 @@ d.ellipse((20, 20, 580, 580), fill=(220, 30, 80, 255)); d.rectangle((200, 200, 4
 im.save(logo)
 
 results = []
+
+# The share-link checks need the demo shop (/s/ahmedabad-gifts/...). This creates it if it is missing.
+import subprocess
+subprocess.run([sys.executable, "-m", "app.manage", "demo-shop"], cwd=os.path.join(HERE, ".."), check=True, capture_output=True)
 def check(name, ok, extra=""):
     results.append(ok); print(("PASS " if ok else "FAIL ") + name + (f"  [{extra}]" if extra else ""))
 

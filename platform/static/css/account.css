@@ -1,0 +1,8 @@
+.auth{max-width:480px;margin:40px auto;padding:0 20px 60px}
+.auth form{margin-top:0}
+.auth .tabs{margin-bottom:16px}
+.auth small{display:block;color:var(--muted);font-size:13px;margin-top:5px}
+.auth .sub{margin:0 0 16px}
+.msg{background:#fff5f5;border:1px solid #f1c0c0;border-radius:10px;padding:10px 12px;margin-bottom:12px;color:var(--bad);font-size:15px}
+.msg[hidden]{display:none}
+.auth .cta{width:100%}

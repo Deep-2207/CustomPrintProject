@@ -38,3 +38,7 @@ t_preview.html
 
 # test output
 platform/tests/out/
+
+# server backups and live settings
+platform/deploy/backups/
+platform/deploy/.env

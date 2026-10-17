@@ -6,7 +6,10 @@ const q = new URLSearchParams(location.search);
 // Two ways in: the normal page (/?product=slug) and a seller's shareable link (/s/<seller>/<slug>).
 const pathMatch = location.pathname.match(/^\/s\/([a-z0-9-]+)\/([a-z0-9-]+)/);
 const seller = pathMatch ? pathMatch[1] : null;
-const slug = pathMatch ? pathMatch[2] : (q.get('product') || 'custom-embossed-wristband');
+// Third way in: a seller's own website shows the page in an iframe (/embed/<public key>/<product>), see static/embed.js.
+const embedMatch = location.pathname.match(/^\/embed\/(pk_[A-Za-z0-9_-]+)\/([a-z0-9-]+)/);
+const embedKey = embedMatch ? embedMatch[1] : null;
+const slug = pathMatch ? pathMatch[2] : embedMatch ? embedMatch[2] : (q.get('product') || 'custom-embossed-wristband');
 const pageUrl = design => (seller ? `/s/${seller}/${slug}` : `/?product=${encodeURIComponent(slug)}`) + (design ? (seller ? '?' : '&') + 'design=' + design : '');
 const CART = 'plat:cart:v1';
 // Keep letters, digits, punctuation and line breaks; drop control characters and anything that could be markup.
@@ -17,8 +20,25 @@ const stickerSvg = k => `<svg viewBox="0 0 100 100" fill="currentColor" aria-hid
 
 const stickers = await (await fetch('/stickers.json')).json();
 const textStyles = await (await fetch('/text-styles.json')).json();   // ids + labels; the drawing lives in textstyles.js
-const product = await (await fetch('/api/products/' + slug)).json();
+const productRes = await fetch(embedKey ? `/api/embed/${embedKey}/products/${slug}` : seller ? `/api/t/${seller}/products/${slug}` : '/api/products/' + slug);
+if (!productRes.ok) {
+  document.body.innerHTML = '<main class="wrap"><h1>This product is not available</h1><p>The link may be wrong, or the seller has not published it yet.</p></main>';
+  throw new Error('product not available');
+}
+const product = await productRes.json();
 document.title = product.name; $('#title').textContent = product.name;
+// Messages to the website that embeds us. Only sent to a website on the seller's allowed list.
+let hostOrigin = null;
+const tell = msg => { if (hostOrigin) parent.postMessage({ source: 'previewprint', version: 1, ...msg }, hostOrigin); };
+if (embedKey) {
+  document.body.classList.add('embed');
+  const asked = q.get('host') || '';
+  if (asked && window.self !== window.top) {
+    const r = await fetch(`/api/embed/${embedKey}/host?origin=${encodeURIComponent(asked)}`).then(r => r.json()).catch(() => ({}));
+    if (r.allowed) hostOrigin = asked;
+  }
+  new ResizeObserver(() => tell({ type: 'resize', height: document.documentElement.scrollHeight })).observe(document.body);
+}
 if (seller && $('#seller-line')) $('#seller-line').innerHTML = 'Ordering from <b>' + esc(seller.replace(/-/g, ' ').replace(/(^| )\w/g, c => c.toUpperCase())) + '</b>';
 const cz = new Customizer($('#stage'), product);
 cz.stickers = Object.fromEntries(stickers.map(k => [k.id, k]));
@@ -205,9 +225,19 @@ $('#reset').onclick = async () => { cz.state = cz.defaults(); await cz.load(); b
 $('#add').onclick = async () => {
   const btn = $('#add'); btn.disabled = true; $('#errs').textContent = '';
   const body = cz.toDesign(); body.preview_png = cz.snapshot();
-  const r = await fetch('/api/designs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  if (seller) body.seller = seller;
+  if (embedKey && q.get('ref')) body.ref = q.get('ref').slice(0, 80);
+  const r = await fetch(embedKey ? `/api/embed/${embedKey}/designs` : '/api/designs', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'fetch' }, body: JSON.stringify(body) });
   const j = await r.json();
   if (!r.ok) { $('#errs').textContent = (j.detail && j.detail.errors ? j.detail.errors : [j.detail || 'Could not save']).join(' · '); btn.disabled = false; return; }
+  if (embedKey) {            // inside the seller's website: hand the design to the page, no cart of our own
+    btn.disabled = false;
+    $('#errs').textContent = '';
+    $('#saved-note').hidden = false;
+    tell({ type: 'design.saved', designId: j.id, product: slug, previewUrl: location.origin + j.preview,
+           text: body.layers.filter(l => l.type === 'text').map(l => l.text.split(String.fromCharCode(10)).join(' / ')).join(' | ') });
+    return;
+  }
   const cart = JSON.parse(localStorage.getItem(CART) || '[]');
   cart.push({ design: j.id, preview: j.preview, name: product.name, size: cz.state.size, layers: body.layers });
   localStorage.setItem(CART, JSON.stringify(cart)); btn.disabled = false; renderCart();
@@ -231,7 +261,7 @@ buildPanel(); update();
 window.cz = cz;
 
 // ---------- product picker: switch products, keeping the text typed so far ----------
-const all = await (await fetch('/api/products')).json();
+const all = embedKey ? [] : await (await fetch(seller ? `/api/t/${seller}/products` : '/api/products')).json();
 if (all.length > 1 && $('#picker') && window.self === window.top) {   // inside the landing-page demo the tabs do this job
   const href = s => (seller ? `/s/${seller}/${s}` : `/?product=${encodeURIComponent(s)}`) + (q.get('demo') ? (seller ? '?' : '&') + 'demo=1' : '');
   $('#picker').hidden = false;
@@ -271,3 +301,7 @@ $('#share')?.addEventListener('click', async e => {
   setTimeout(() => e.target.textContent = 'Copy link', 1500);
 });
 if (seller) $('#add').textContent = 'Save and share design';
+if (embedKey) {
+  $('#add').textContent = (q.get('button') || 'Add to my order').slice(0, 40);
+  tell({ type: 'ready', product: slug });
+}
