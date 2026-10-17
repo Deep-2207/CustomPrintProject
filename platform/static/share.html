@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Customize Your Product</title>
+<link rel="stylesheet" href="/css/app.css">
+</head><body class="share">
+<main class="wrap">
+  <p id="seller-line" class="seller"></p>
+  <h1 id="title">Loading…</h1>
+  <div class="grid">
+    <section class="left">
+      <div class="stage" id="stage"></div>
+      <div class="views"><button data-view="front" class="btn ghost">Front</button><button data-view="back" class="btn ghost">Back</button>
+        <span class="hint">Drag to rotate · scroll or pinch to zoom</span></div>
+      <h3>Position text <small>(drag it)</small></h3>
+      <div id="strips"></div>
+    </section>
+    <section class="right">
+      <div id="panel"></div>
+      <div id="errs" role="alert" class="errs"></div>
+      <div class="actions">
+        <button class="btn" id="add">Add to cart</button>
+        <button class="btn ghost" id="reset">Reset Design</button>
+      </div>
+      <div id="share" class="share-box" hidden>
+        <h3>Design saved</h3>
+        <p>Send this link to the seller. It opens your exact design.</p>
+        <input type="text" readonly aria-label="Link to your saved design">
+        <div class="actions"><button class="btn ghost" data-copy type="button">Copy link</button>
+          <a class="btn wa" data-wa target="_blank" rel="noopener">Send on WhatsApp</a></div>
+      </div>
+    </section>
+  </div>
+</main>
+<script type="module" src="/js/app.js"></script>
+</body></html>

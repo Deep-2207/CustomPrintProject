@@ -28,3 +28,26 @@ fieldset{border:0;padding:0;margin:0}legend{font-weight:600;padding:0}
 @media(max-width:860px){.grid{grid-template-columns:1fr}.left{position:static}.stage{height:320px}}
 @media(max-width:480px){.row{grid-template-columns:1fr}.btn{flex:1}}
 [hidden]{display:none!important}
+
+.seller{margin:4px 0 0;color:#555}.share-box{border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--soft);margin-top:14px}
+.share-box h3{margin:0 0 4px}.share-box input{margin:6px 0 10px}a.btn{text-decoration:none;display:inline-block;text-align:center}.btn.wa{background:#1a9a4b;border-color:#1a9a4b}
+@media(max-width:860px){body.share .left{position:sticky;top:0;z-index:5;background:#fff;padding-bottom:4px}body.share .stage{height:260px}body.share #strips,body.share h3:has(+#strips){display:none}}
+
+textarea{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff;resize:vertical;min-height:70px}
+textarea.invalid{border-color:var(--bad);background:#fff5f5}
+.stk{margin:10px 0 2px}.stk .lr{font-size:13px;margin-bottom:6px}
+.stk-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:8px}
+.stk-btn{aspect-ratio:1;border:1px solid var(--line);border-radius:10px;background:#fff;color:#333;padding:9px;cursor:pointer;transition:transform .08s,border-color .08s}
+.stk-btn:hover{border-color:var(--accent);color:var(--accent);transform:translateY(-1px)}
+.stk-btn svg,.stk-ico svg{width:100%;height:100%;display:block}
+.stk-list{margin-top:8px;display:grid;gap:6px}
+.stk-row{display:grid;grid-template-columns:32px 1fr 32px;gap:10px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px 8px}
+.stk-ico{width:28px;height:28px;color:var(--accent)}
+.stk-x{border:0;background:none;font-size:22px;line-height:1;color:#777;cursor:pointer}.stk-x:hover{color:var(--bad)}
+
+.tpl{margin:10px 0 6px}.tpl .lr{font-size:13px;margin-bottom:6px}
+.tpl-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px}
+.tpl-btn{border:2px solid var(--line);border-radius:10px;background:#fff;padding:0;cursor:pointer;overflow:hidden;display:flex;flex-direction:column;font:inherit;font-size:12px;color:#444}
+.tpl-btn canvas{width:100%;height:auto;display:block;background:#fff}
+.tpl-btn span{padding:4px 2px 6px;text-align:center}
+.tpl-btn:hover{border-color:#9ec1ff}.tpl-btn.on{border-color:var(--accent);box-shadow:0 0 0 2px #cfe0ff;color:var(--accent);font-weight:600}

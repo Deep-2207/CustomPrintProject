@@ -1,0 +1,15 @@
+[
+  {"id": "star", "label": "Star", "svg": "<path d='M50 6 L61 38 L95 38 L67 58 L78 92 L50 71 L22 92 L33 58 L5 38 L39 38 Z'/>"},
+  {"id": "heart", "label": "Heart", "svg": "<path d='M50 90 C10 60 4 38 20 22 C33 10 46 18 50 30 C54 18 67 10 80 22 C96 38 90 60 50 90 Z'/>"},
+  {"id": "smile", "label": "Smile", "svg": "<path d='M50 5a45 45 0 1 0 0 90a45 45 0 1 0 0-90z M33 36a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M67 36a7 7 0 1 0 0 14a7 7 0 1 0 0-14z M26 60 Q50 90 74 60 Q50 74 26 60z' fill-rule='evenodd'/>"},
+  {"id": "crown", "label": "Crown", "svg": "<path d='M8 82 L8 30 L30 52 L50 16 L70 52 L92 30 L92 82 Z'/>"},
+  {"id": "bolt", "label": "Lightning", "svg": "<path d='M58 4 L18 56 L44 56 L36 96 L82 40 L54 40 Z'/>"},
+  {"id": "music", "label": "Music", "svg": "<path d='M38 12 L84 4 L84 66 a14 11 0 1 1 -8 -10 L76 24 L46 29 L46 76 a14 11 0 1 1 -8 -10 Z'/>"},
+  {"id": "flower", "label": "Flower", "svg": "<g><circle cx='50' cy='24' r='16'/><circle cx='76' cy='43' r='16'/><circle cx='66' cy='73' r='16'/><circle cx='34' cy='73' r='16'/><circle cx='24' cy='43' r='16'/><circle cx='50' cy='50' r='13'/></g>"},
+  {"id": "sun", "label": "Sun", "svg": "<g><circle cx='50' cy='50' r='20'/><path d='M46 4 H54 V22 H46 Z'/><path d='M46 78 H54 V96 H46 Z'/><path d='M4 46 V54 H22 V46 Z'/><path d='M78 46 V54 H96 V46 Z'/><path d='M46 4 H54 V22 H46 Z' transform='rotate(45 50 50)'/><path d='M46 4 H54 V22 H46 Z' transform='rotate(135 50 50)'/><path d='M46 4 H54 V22 H46 Z' transform='rotate(225 50 50)'/><path d='M46 4 H54 V22 H46 Z' transform='rotate(315 50 50)'/></g>"},
+  {"id": "paw", "label": "Paw", "svg": "<g><ellipse cx='50' cy='68' rx='23' ry='19'/><circle cx='20' cy='44' r='10'/><circle cx='39' cy='26' r='10'/><circle cx='61' cy='26' r='10'/><circle cx='80' cy='44' r='10'/></g>"},
+  {"id": "thumbs", "label": "Thumbs up", "svg": "<path d='M8 44 H26 V92 H8 Z M32 46 L50 8 C61 8 66 18 62 30 L58 40 H88 C96 40 97 48 92 54 C97 59 96 66 90 70 C94 76 91 83 84 85 C87 91 81 93 76 93 H32 Z'/>"},
+  {"id": "coffee", "label": "Coffee", "svg": "<path d='M10 34 H68 V70 Q68 92 46 92 H32 Q10 92 10 70 Z M68 42 H78 Q92 42 92 56 Q92 70 78 70 H68 V62 H78 Q84 62 84 56 Q84 50 78 50 H68 Z M24 6 H32 V26 H24 Z M44 6 H52 V26 H44 Z'/>"},
+  {"id": "cap", "label": "Graduate", "svg": "<path d='M50 14 L96 36 L50 58 L4 36 Z M22 54 V72 Q50 90 78 72 V54 L50 68 Z'/>"},
+  {"id": "ball", "label": "Football", "svg": "<path d='M50 6a44 44 0 1 0 0 88a44 44 0 1 0 0-88z M50 24 L67 36 L61 56 H39 L33 36 Z' fill-rule='evenodd'/>"}
+]

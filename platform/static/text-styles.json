@@ -1,0 +1,10 @@
+[
+  {"id": "plain", "label": "Plain"},
+  {"id": "bubble", "label": "Bubble sticker"},
+  {"id": "banner", "label": "Ribbon banner"},
+  {"id": "badge", "label": "Round badge"},
+  {"id": "shadow", "label": "Retro shadow"},
+  {"id": "script", "label": "Script"},
+  {"id": "stamp", "label": "Stamp"},
+  {"id": "pop", "label": "Pop colour"}
+]

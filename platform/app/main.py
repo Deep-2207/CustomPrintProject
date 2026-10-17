@@ -49,8 +49,9 @@ def init_db() -> None:
     with db() as c:
         c.execute("CREATE TABLE IF NOT EXISTS products(slug TEXT PRIMARY KEY, config TEXT NOT NULL)")
         c.execute("CREATE TABLE IF NOT EXISTS designs(id TEXT PRIMARY KEY, slug TEXT, design TEXT NOT NULL, created TEXT DEFAULT CURRENT_TIMESTAMP)")
-        if not c.execute("SELECT 1 FROM products LIMIT 1").fetchone():
-            c.execute("INSERT INTO products VALUES(?,?)", ("custom-embossed-wristband", json.dumps(SEED)))
+        # Insert any built-in product that is not in the database yet (existing ones are never overwritten).
+        for p in SEEDS:
+            c.execute("INSERT OR IGNORE INTO products VALUES(?,?)", (p["slug"], json.dumps(p)))
 
 
 SEED: dict[str, Any] = {
@@ -69,6 +70,31 @@ SEED: dict[str, Any] = {
     "body_meshes": ["band_outer"],
     "price": {"base": 16.0, "currency": "INR"},
 }
+
+
+MUG_SEED: dict[str, Any] = {
+    "slug": "custom-printed-mug",
+    "name": "Custom Printed Mugs",
+    "model": {"type": "template", "template": "mug", "url": None},
+    # height / radius in millimetres drive the 3D shape (see static/js/templates.js)
+    "sizes": [{"id": "11oz", "label": "11 oz (325 ml)", "mm": 95, "radius": 41}, {"id": "15oz", "label": "15 oz (440 ml)", "mm": 110, "radius": 44}],
+    "colors": [{"name": n, "hex": h} for n, h in [("White", "#f4f4f4"), ("Black", "#1b1b1b"), ("Red", "#d62828"), ("Blue", "#1d6fe8"),
+                                                  ("Green", "#2a9d3f"), ("Yellow", "#facc15"), ("Orange", "#f97316"), ("Pink", "#ec4899")]],
+    "imprint_colors": [{"name": n, "hex": h} for n, h in [("Auto", ""), ("Black", "#111111"), ("White", "#ffffff"), ("Gold", "#d4a017"), ("Red", "#d62828")]],
+    "fonts": ["Arial", "Impact", "Georgia", "Courier New", "Trebuchet MS"],
+    # Two fixed print rectangles, one each side of the handle. With the handle on the viewer's left the
+    # visible side is the FRONT; turn the mug and the BACK area faces you. y0/y1 = top/bottom of the area.
+    "zones": [
+        {"id": "front", "label": "Front print area", "mesh": "mug_outer", "style": "print", "max_chars": 60, "max_lines": 4, "allow_images": True,
+         "u0": 0.09, "u1": 0.41, "y0": 0.14, "y1": 0.86, "guide": True},
+        {"id": "back", "label": "Back print area", "mesh": "mug_outer", "style": "print", "max_chars": 60, "max_lines": 4, "allow_images": True,
+         "u0": 0.59, "u1": 0.91, "y0": 0.14, "y1": 0.86, "guide": True},
+    ],
+    "body_meshes": ["mug_outer"],
+    "price": {"base": 250.0, "currency": "INR"},
+}
+
+SEEDS = [SEED, MUG_SEED]
 
 
 @app.on_event("startup")
@@ -90,9 +116,14 @@ class Zone(BaseModel):
     style: str = Field(default="print", pattern=r"^(emboss|deboss|print)$")
     max_chars: int = Field(default=28, ge=1, le=500)
     allow_images: bool = True
+    allow_stickers: bool = True
+    max_lines: int = Field(default=1, ge=1, le=10)   # how many text lines the area accepts
     u0: float = 0.0
     u1: float = 1.0
     aspect: float = 0.0          # width/height of the whole UV surface of the mesh (0 = auto)
+    y0: float = Field(default=0.0, ge=0, le=1)   # top of the printable rectangle (fraction of the surface height)
+    y1: float = Field(default=1.0, ge=0, le=1)   # bottom of the printable rectangle
+    guide: bool = False          # draw a dashed outline of the area on the preview
 
 
 class ProductIn(BaseModel):
@@ -183,7 +214,11 @@ async def upload_image(file: UploadFile = File(...)):
 
 
 # ---------- designs ----------
-CONTROL = re.compile(r"[\x00-\x1f\x7f<>`\\{}]")
+CONTROL = re.compile(r"[\x00-\x09\x0b-\x1f\x7f<>`\\{}]")   # strips control chars but keeps newline
+MAX_STICKERS_PER_ZONE = 10
+# Sticker ids come from static/stickers.json, the single source of truth shared with the browser.
+STICKER_IDS = {s["id"] for s in json.loads((BASE / "static" / "stickers.json").read_text(encoding="utf8"))}
+TEXT_STYLE_IDS = {s["id"] for s in json.loads((BASE / "static" / "text-styles.json").read_text(encoding="utf8"))}
 
 
 class DesignIn(BaseModel):
@@ -210,14 +245,24 @@ def save_design(d: DesignIn):
             errors.append(f"Layer {i + 1}: unknown zone")
             continue
         if l.get("type") == "text":
-            text = CONTROL.sub("", str(l.get("text", "")))[:1000].strip()
-            if len(text) > z["max_chars"]:
-                errors.append(f"{z['label']}: {len(text)} characters, limit is {z['max_chars']}")
+            raw = str(l.get("text", "")).replace("\r\n", "\n").replace("\r", "\n")
+            text = CONTROL.sub("", raw)[:1000].strip()
+            chars = len(text.replace("\n", ""))           # line breaks are free; letters count
+            lines = text.count("\n") + 1 if text else 0
+            if chars > z["max_chars"]:
+                errors.append(f"{z['label']}: {chars} characters, limit is {z['max_chars']}")
+                continue
+            if lines > z.get("max_lines", 1):
+                errors.append(f"{z['label']}: {lines} lines, limit is {z.get('max_lines', 1)}")
                 continue
             if l.get("font") not in prod["fonts"]:
                 errors.append(f"{z['label']}: font not allowed")
                 continue
-            clean.append({**{k: l[k] for k in ("zone", "type", "font") }, "text": text,
+            tpl = l.get("template") or "plain"
+            if tpl not in TEXT_STYLE_IDS:
+                errors.append(f"{z['label']}: unknown text style")
+                continue
+            clean.append({**{k: l[k] for k in ("zone", "type", "font") }, "template": tpl, "text": text,
                           "color": l.get("color") if re.fullmatch(r"#[0-9a-fA-F]{6}", str(l.get("color", ""))) else "",
                           "x": float(l.get("x", .5)), "y": float(l.get("y", .5)), "size": float(l.get("size", .5)), "rot": float(l.get("rot", 0))})
         elif l.get("type") == "image":
@@ -230,6 +275,18 @@ def save_design(d: DesignIn):
                 continue
             clean.append({"zone": l["zone"], "type": "image", "upload_id": uid, "x": float(l.get("x", .5)), "y": float(l.get("y", .5)),
                           "scale": float(l.get("scale", .5)), "rot": float(l.get("rot", 0))})
+        elif l.get("type") == "sticker":
+            if not z.get("allow_stickers", True):
+                errors.append(f"{z['label']}: stickers are not allowed here")
+                continue
+            if l.get("sticker") not in STICKER_IDS:
+                errors.append(f"{z['label']}: unknown sticker")
+                continue
+            if sum(1 for c in clean if c["zone"] == l["zone"] and c["type"] == "sticker") >= MAX_STICKERS_PER_ZONE:
+                errors.append(f"{z['label']}: at most {MAX_STICKERS_PER_ZONE} stickers")
+                continue
+            clean.append({"zone": l["zone"], "type": "sticker", "sticker": l["sticker"], "x": float(l.get("x", .5)), "y": float(l.get("y", .5)),
+                          "scale": float(l.get("scale", .35)), "rot": float(l.get("rot", 0))})
         else:
             errors.append(f"Layer {i + 1}: unknown type")
     if errors:
@@ -267,6 +324,15 @@ def get_design(did: str):
 # Mount only the public subfolders — never DATA itself (it holds the SQLite DB).
 for _n, _d in (("models", MODELS), ("uploads", UPLOADS), ("designs", DESIGNS)):
     app.mount(f"/files/{_n}", StaticFiles(directory=_d), name=f"files-{_n}")
+
+
+@app.get("/s/{seller}/{slug}")
+def share_page(seller: str, slug: str):
+    """Shareable link page: /s/<seller>/<product>. Sellers become real accounts in week 3."""
+    if not re.fullmatch(r"[a-z0-9-]{1,40}", seller) or not re.fullmatch(r"[a-z0-9-]{2,60}", slug):
+        raise HTTPException(404, "Not found")
+    _product(slug)   # 404 if the product does not exist
+    return FileResponse(BASE / "static" / "share.html")
 
 
 @app.get("/")
