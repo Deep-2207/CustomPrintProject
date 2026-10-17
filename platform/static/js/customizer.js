@@ -41,10 +41,27 @@ export class Customizer extends EventTarget {
   }
 
   defaults() {
-    const p = this.product, z = {};
-    p.zones.forEach(zn => z[zn.id] = { text: '', font: p.fonts[0], size: .45, x: .5, y: .5, color: '', image: null, stickers: [], tpl: 'plain' });
-    return { size: p.sizes[0] ? p.sizes[0].id : null, bodyColor: p.colors[0].hex, imprintColor: '', zones: z };
+    // Each product sets what a fresh customizer starts with (product.defaults); anything missing falls back.
+    const p = this.product, d = p.defaults || {}, z = {};
+    const font = p.fonts.includes(d.font) ? d.font : p.fonts[0];
+    p.zones.forEach(zn => z[zn.id] = { text: '', font, size: d.textSize || .45, x: .5, y: .5, color: '', image: null, stickers: [], tpl: d.tpl || 'plain' });
+    const colorOk = p.colors.some(c => c.hex === d.bodyColor);
+    return { size: p.sizes[0] ? p.sizes[0].id : null, bodyColor: colorOk ? d.bodyColor : p.colors[0].hex, imprintColor: '', zones: z };
   }
+
+  // Load a ready-made example (product.demos): colours plus text, style and stickers per area.
+  applyDemo(demo) {
+    const st = this.defaults();
+    if (demo.body_color) st.bodyColor = demo.body_color;
+    st.imprintColor = demo.imprint_color || '';
+    Object.entries(demo.zones || {}).forEach(([id, v]) => {
+      const s = st.zones[id]; if (!s) return;
+      Object.assign(s, v, { stickers: (v.stickers || []).map(k => ({ rot: 0, y: .5, ...k })) });
+    });
+    this.state = st;
+  }
+
+  set autoRotate(on) { if (this.controls) { this.controls.autoRotate = on; this.controls.autoRotateSpeed = 2.2; } }
 
   resize() {
     if (this.noGL) return;
@@ -205,7 +222,7 @@ export class Customizer extends EventTarget {
     c.fillStyle = body; c.fillRect(0, 0, cv.width, cv.height);
     if (!this._scratch) this._scratch = document.createElement('canvas');
     this._scratch.width = cv.width; this._scratch.height = cv.height;
-    const s = { ...s0, text: s0.text || 'Deep\nPatel', tpl: tplId, x: .5, y: .5, size: .6 };
+    const s = { ...s0, text: s0.text || this.product.sample || 'Your\nName', tpl: tplId, x: .5, y: .5, size: .6 };
     this.drawText(c, this._scratch.getContext('2d'), { ...z, style: 'print' }, s, { x: 0, y: 0, w: cv.width, h: cv.height }, body, st.imprintColor);
   }
 

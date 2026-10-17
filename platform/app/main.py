@@ -13,11 +13,12 @@ import os
 import re
 import secrets
 import sqlite3
+import time
 import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import Depends, FastAPI, File, Header, HTTPException, UploadFile
+from fastapi import BackgroundTasks, Depends, FastAPI, File, Header, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from PIL import Image
@@ -49,9 +50,14 @@ def init_db() -> None:
     with db() as c:
         c.execute("CREATE TABLE IF NOT EXISTS products(slug TEXT PRIMARY KEY, config TEXT NOT NULL)")
         c.execute("CREATE TABLE IF NOT EXISTS designs(id TEXT PRIMARY KEY, slug TEXT, design TEXT NOT NULL, created TEXT DEFAULT CURRENT_TIMESTAMP)")
-        # Insert any built-in product that is not in the database yet (existing ones are never overwritten).
+        c.execute("""CREATE TABLE IF NOT EXISTS leads(id INTEGER PRIMARY KEY AUTOINCREMENT, created TEXT DEFAULT CURRENT_TIMESTAMP,
+                     business TEXT, name TEXT, phone TEXT, email TEXT, sells TEXT, website TEXT, city TEXT, ip TEXT)""")
+        # Built-in products: insert if missing; replace when the built-in definition has a newer seed_version.
+        # (Admin edits to a built-in product are replaced on a version bump; use a new slug for your own variants.)
         for p in SEEDS:
-            c.execute("INSERT OR IGNORE INTO products VALUES(?,?)", (p["slug"], json.dumps(p)))
+            row = c.execute("SELECT config FROM products WHERE slug=?", (p["slug"],)).fetchone()
+            if row is None or json.loads(row["config"]).get("seed_version", 0) < p["seed_version"]:
+                c.execute("INSERT OR REPLACE INTO products VALUES(?,?)", (p["slug"], json.dumps(p)))
 
 
 SEED: dict[str, Any] = {
@@ -69,6 +75,15 @@ SEED: dict[str, Any] = {
     ],
     "body_meshes": ["band_outer"],
     "price": {"base": 16.0, "currency": "INR"},
+    # What a fresh customizer starts with, the hint text, and ready-made examples for demos.
+    "defaults": {"bodyColor": "#1fb5e8", "tpl": "plain", "textSize": 0.45},
+    "sample": "TEAM 2026",
+    "placeholder": "e.g. TEAM SPIRIT 2026",
+    "demos": [
+        {"name": "Team spirit", "body_color": "#1d6fe8", "zones": {"front": {"text": "TEAM SPIRIT 2026"}, "back": {"text": "NEVER GIVE UP"}}},
+        {"name": "Charity run", "body_color": "#d62828", "imprint_color": "#ffffff", "zones": {"front": {"text": "RUN FOR LIFE"}, "back": {"text": "5K - AHMEDABAD"}}},
+        {"name": "Event pass", "body_color": "#1b1b1b", "imprint_color": "#d4a017", "zones": {"front": {"text": "VIP ACCESS"}, "back": {"text": "ALL NIGHT LONG"}}},
+    ],
 }
 
 
@@ -92,9 +107,27 @@ MUG_SEED: dict[str, Any] = {
     ],
     "body_meshes": ["mug_outer"],
     "price": {"base": 250.0, "currency": "INR"},
+    "defaults": {"bodyColor": "#f4f4f4", "tpl": "bubble", "textSize": 0.6},
+    "sample": "Your\nName",
+    "placeholder": "Type a name or message. Press Enter for a new line",
+    "demos": [
+        {"name": "World's best dad", "body_color": "#f4f4f4",
+         "zones": {"front": {"text": "WORLD'S\nBEST\nDAD", "tpl": "bubble"}, "back": {"text": "Since\n1985", "tpl": "script"}}},
+        {"name": "Name gift", "body_color": "#1b1b1b",
+         "zones": {"front": {"text": "Deep\nPatel", "tpl": "script", "color": "#ffd166",
+                             "stickers": [{"id": "star", "x": 0.14, "y": 0.18, "scale": 0.16}, {"id": "star", "x": 0.86, "y": 0.82, "scale": 0.16}]}}},
+        {"name": "Team mug", "body_color": "#1d6fe8",
+         "zones": {"front": {"text": "TEAM\nAHMEDABAD", "tpl": "badge"}, "back": {"text": "Work hard\nDrink chai", "tpl": "shadow"}}},
+        {"name": "Mr & Mrs", "body_color": "#ec4899",
+         "zones": {"front": {"text": "Mr &\nMrs Patel", "tpl": "shadow",
+                             "stickers": [{"id": "heart", "x": 0.12, "y": 0.2, "scale": 0.18}, {"id": "heart", "x": 0.88, "y": 0.8, "scale": 0.18}]}}},
+    ],
 }
 
+SEED_VERSION = 2   # bump when a built-in product definition above changes
 SEEDS = [SEED, MUG_SEED]
+for _p in SEEDS:
+    _p["seed_version"] = SEED_VERSION
 
 
 @app.on_event("startup")
@@ -137,6 +170,11 @@ class ProductIn(BaseModel):
     zones: list[Zone]
     body_meshes: list[str] = []
     price: dict = {}
+    defaults: dict = {}            # starting colour, text style and text size
+    sample: str = ""               # text shown in the style previews while the customer has typed nothing
+    placeholder: str = ""          # hint inside the empty message box
+    demos: list[dict] = []         # ready-made examples for the demo bar
+    seed_version: int = 0          # set on built-in products only
 
 
 # ---------- products ----------
@@ -320,6 +358,73 @@ def get_design(did: str):
     return {"id": did, **d, "preview": f"/files/designs/{did}.png"}
 
 
+# ---------- sign-ups (leads) from the landing page ----------
+LEAD_LIMIT, LEAD_WINDOW = 5, 3600          # at most 5 sign-ups per IP per hour
+_lead_hits: dict[str, list[float]] = {}
+
+
+class LeadIn(BaseModel):
+    business: str = Field(min_length=1, max_length=120)
+    name: str = Field(min_length=1, max_length=80)
+    phone: str = Field(pattern=r"^\+?[0-9 \-]{7,18}$")
+    email: str = Field(default="", max_length=120, pattern=r"^([^@\s]+@[^@\s]+\.[^@\s]+)?$")
+    sells: str = Field(default="", max_length=300)
+    website: str = Field(default="", max_length=200)
+    city: str = Field(default="Ahmedabad", max_length=60)
+    company_site: str = ""        # honeypot: real visitors never see or fill this field
+
+
+def _notify(lead: dict) -> None:
+    """Tell the owner about a new sign-up: always append to data/outbox.log, and email it if SMTP is configured
+    (env: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NOTIFY_TO)."""
+    line = json.dumps(lead, ensure_ascii=False)
+    with open(DATA / "outbox.log", "a", encoding="utf8") as f:
+        f.write(line + "\n")
+    host, to = os.environ.get("SMTP_HOST"), os.environ.get("NOTIFY_TO")
+    if not (host and to):
+        return
+    try:
+        import smtplib
+        from email.message import EmailMessage
+        msg = EmailMessage()
+        msg["Subject"] = f"New seller sign-up: {lead['business']}"
+        msg["From"] = os.environ.get("SMTP_USER", to)
+        msg["To"] = to
+        msg.set_content("\n".join(f"{k}: {v}" for k, v in lead.items()))
+        with smtplib.SMTP(host, int(os.environ.get("SMTP_PORT", "587")), timeout=10) as s:
+            s.starttls()
+            if os.environ.get("SMTP_USER"):
+                s.login(os.environ["SMTP_USER"], os.environ.get("SMTP_PASS", ""))
+            s.send_message(msg)
+    except Exception as e:   # never fail the sign-up because email failed
+        with open(DATA / "outbox.log", "a", encoding="utf8") as f:
+            f.write(json.dumps({"email_error": str(e)}) + "\n")
+
+
+@app.post("/api/leads")
+def create_lead(lead: LeadIn, request: Request, tasks: BackgroundTasks):
+    if lead.company_site:                      # a bot filled the hidden field: pretend it worked
+        return {"ok": True}
+    ip = request.client.host if request.client else "unknown"
+    now = time.time()
+    hits = [t for t in _lead_hits.get(ip, []) if now - t < LEAD_WINDOW]
+    if len(hits) >= LEAD_LIMIT:
+        raise HTTPException(429, "Too many sign-ups from this connection. Please try again later.")
+    _lead_hits[ip] = hits + [now]
+    data = lead.model_dump(exclude={"company_site"})
+    with db() as c:
+        c.execute("INSERT INTO leads(business,name,phone,email,sells,website,city,ip) VALUES(?,?,?,?,?,?,?,?)",
+                  (data["business"], data["name"], data["phone"], data["email"], data["sells"], data["website"], data["city"], ip))
+    tasks.add_task(_notify, data)
+    return {"ok": True}
+
+
+@app.get("/api/leads", dependencies=[Depends(admin)])
+def list_leads():
+    with db() as c:
+        return [dict(r) for r in c.execute("SELECT id,created,business,name,phone,email,sells,website,city FROM leads ORDER BY id DESC LIMIT 500")]
+
+
 # ---------- static ----------
 # Mount only the public subfolders — never DATA itself (it holds the SQLite DB).
 for _n, _d in (("models", MODELS), ("uploads", UPLOADS), ("designs", DESIGNS)):
@@ -336,8 +441,10 @@ def share_page(seller: str, slug: str):
 
 
 @app.get("/")
-def home():
-    return FileResponse(BASE / "static" / "product.html")
+def home(request: Request):
+    """The landing page, or the customizer when the address names a product or a saved design."""
+    q = request.query_params
+    return FileResponse(BASE / "static" / ("product.html" if ("product" in q or "design" in q) else "landing.html"))
 
 
 app.mount("/", StaticFiles(directory=BASE / "static", html=True), name="static")

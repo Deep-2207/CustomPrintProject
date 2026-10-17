@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>PreviewPrint: let customers see their custom mug or wristband before they order</title>
+<meta name="description" content="A live 3D designer for mugs and wristbands. Add it to your website or share a link on WhatsApp. Free pilot for sellers in Ahmedabad.">
+<link rel="stylesheet" href="/css/landing.css">
+</head><body>
+<header class="top"><div class="in">
+  <a class="brand" href="/">PreviewPrint</a>   <!-- working name: change it here and in the footer -->
+  <nav><a href="#demo">Live demo</a><a href="#how">How it works</a><a class="cta sm" href="#join">Free pilot</a></nav>
+</div></header>
+
+<main>
+<section class="hero"><div class="in">
+  <p class="eyebrow">For custom mug, gift and wristband sellers</p>
+  <h1>Let customers <em>see</em> their name on the mug before they order.</h1>
+  <p class="lead">Add a live 3D designer to your website, or send a link on WhatsApp. Your customer types a name, picks a style, and you get a print-ready design.</p>
+  <p><a class="cta" href="#demo">Try the live demo</a> <a class="ghost" href="#join">Get a free pilot</a></p>
+</div></section>
+
+<section id="demo" class="sec"><div class="in">
+  <h2>Try it yourself</h2>
+  <p class="sub">This is the real customizer. Type a name, tap a style, turn the mug around.</p>
+  <div class="tabs" role="tablist" aria-label="Demo product">
+    <button role="tab" class="tab on" data-src="/?product=custom-printed-mug&demo=1" aria-selected="true">Mug</button>
+    <button role="tab" class="tab" data-src="/?product=custom-embossed-wristband&demo=1" aria-selected="false">Wristband</button>
+  </div>
+  <iframe id="frame" title="Live product designer demo" src="/?product=custom-printed-mug&demo=1" loading="lazy"></iframe>
+</div></section>
+
+<section class="sec alt"><div class="in">
+  <h2>Why sellers use it</h2>
+  <div class="cards">
+    <article><h3>Fewer questions, more orders</h3><p>Customers see exactly what they will get, so you spend less time on "how will it look?" messages.</p></article>
+    <article><h3>Works with WhatsApp and Instagram</h3><p>No website needed. Share one link, and the customer designs the mug on their phone.</p></article>
+    <article><h3>Designs ready to print</h3><p>You receive the saved design with the preview, the text, and any logo they uploaded.</p></article>
+  </div>
+</div></section>
+
+<section id="how" class="sec"><div class="in">
+  <h2>How it works</h2>
+  <ol class="steps">
+    <li><b>Tell us about your shop.</b><span>Fill the short form below.</span></li>
+    <li><b>We set up your products.</b><span>Mugs and wristbands first, with your sizes and colours.</span></li>
+    <li><b>Share the link or add it to your site.</b><span>Customers design, you receive the file.</span></li>
+  </ol>
+</div></section>
+
+<section id="join" class="sec alt"><div class="in narrow">
+  <h2>Free pilot for sellers in Ahmedabad</h2>
+  <p class="sub">We are working with the first few sellers and setting up their products ourselves. Tell us about your shop and we will contact you.</p>
+  <form id="lead" novalidate>
+    <div class="f"><label for="business">Shop or business name *</label><input id="business" name="business" required maxlength="120" autocomplete="organization"></div>
+    <div class="f"><label for="name">Your name *</label><input id="name" name="name" required maxlength="80" autocomplete="name"></div>
+    <div class="f"><label for="phone">WhatsApp or phone number *</label><input id="phone" name="phone" type="tel" required maxlength="18" inputmode="tel" autocomplete="tel" placeholder="+91 98765 43210"></div>
+    <div class="f"><label for="email">Email (optional)</label><input id="email" name="email" type="email" maxlength="120" autocomplete="email"></div>
+    <div class="f"><label for="sells">What do you sell? (optional)</label><textarea id="sells" name="sells" rows="2" maxlength="300" placeholder="e.g. photo mugs, corporate gifts, event wristbands"></textarea></div>
+    <div class="f"><label for="website">Website or Instagram (optional)</label><input id="website" name="website" maxlength="200" autocomplete="url"></div>
+    <div class="hp" aria-hidden="true"><label>Leave this empty<input name="company_site" tabindex="-1" autocomplete="off"></label></div>
+    <p id="msg" class="msg" role="alert"></p>
+    <button class="cta" type="submit" id="send">Request a free pilot</button>
+    <p class="fine">We use your details only to contact you about the pilot.</p>
+  </form>
+  <div id="thanks" class="thanks" hidden><h3>Thank you!</h3><p>We have your details and will contact you soon on the number you gave.</p></div>
+</div></section>
+</main>
+
+<footer><div class="in">&copy; PreviewPrint &middot; Ahmedabad, Gujarat</div></footer>
+<script src="/js/landing.js"></script>
+</body></html>

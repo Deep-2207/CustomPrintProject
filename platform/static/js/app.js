@@ -23,9 +23,17 @@ if (seller && $('#seller-line')) $('#seller-line').innerHTML = 'Ordering from <b
 const cz = new Customizer($('#stage'), product);
 cz.stickers = Object.fromEntries(stickers.map(k => [k.id, k]));
 
+// Text carried over from the product the customer was just looking at (see the picker below).
+const CARRY = 'plat:carry';
 if (q.get('design')) {
   const r = await fetch('/api/designs/' + q.get('design'));
   if (r.ok) cz.fromDesign(await r.json());
+} else {
+  try {
+    const carry = JSON.parse(sessionStorage.getItem(CARRY) || 'null');
+    sessionStorage.removeItem(CARRY);
+    if (carry) product.zones.forEach((z, i) => { if (carry.texts[i]) cz.state.zones[z.id].text = carry.texts[i]; });   // over-long text is flagged, never cut
+  } catch { /* storage unavailable: start fresh */ }
 }
 await cz.load();
 if (q.get('view') === 'back') cz.setView('back');   // handy for links and screenshots
@@ -44,8 +52,8 @@ function buildPanel() {
   ${product.zones.map(z => `<div class="zone" data-z="${z.id}"><h4>${esc(z.label)}</h4>
     <div class="lr"><label for="t-${z.id}">Enter Your Custom Message</label><span class="cnt" id="c-${z.id}"></span></div>
     ${(z.max_lines || 1) > 1
-      ? `<textarea id="t-${z.id}" data-f="text" rows="${Math.min(z.max_lines, 4)}" placeholder="Type here. Press Enter for a new line, e.g. a name on two lines" maxlength="500" aria-describedby="m-${z.id}"></textarea>`
-      : `<input type="text" id="t-${z.id}" data-f="text" placeholder="Type here…" autocomplete="off" maxlength="500" aria-describedby="m-${z.id}">`}
+      ? `<textarea id="t-${z.id}" data-f="text" rows="${Math.min(z.max_lines, 4)}" placeholder="${esc(product.placeholder || 'Type here. Press Enter for a new line')}" maxlength="500" aria-describedby="m-${z.id}"></textarea>`
+      : `<input type="text" id="t-${z.id}" data-f="text" placeholder="${esc(product.placeholder || 'Type here…')}" autocomplete="off" maxlength="500" aria-describedby="m-${z.id}">`}
     <div class="msg" id="m-${z.id}"></div>
     <div class="tpl"><div class="lr"><span>Text style</span><span class="cnt">your text in each style</span></div>
       <div class="tpl-grid">${textStyles.map(t => `<button type="button" class="tpl-btn" data-tpl="${t.id}" aria-pressed="false" aria-label="${esc(t.label)} style"><canvas width="240" height="150"></canvas><span>${esc(t.label)}</span></button>`).join('')}</div></div>
@@ -221,6 +229,30 @@ $('#cart')?.addEventListener('click', e => {
 renderCart();
 buildPanel(); update();
 window.cz = cz;
+
+// ---------- product picker: switch products, keeping the text typed so far ----------
+const all = await (await fetch('/api/products')).json();
+if (all.length > 1 && $('#picker') && window.self === window.top) {   // inside the landing-page demo the tabs do this job
+  const href = s => (seller ? `/s/${seller}/${s}` : `/?product=${encodeURIComponent(s)}`) + (q.get('demo') ? (seller ? '?' : '&') + 'demo=1' : '');
+  $('#picker').hidden = false;
+  $('#picker').innerHTML = all.map(p => `<a href="${href(p.slug)}" data-pick class="pick${p.slug === slug ? ' on' : ''}" ${p.slug === slug ? 'aria-current="page"' : ''}>${esc(p.name)}</a>`).join('');
+  $('#picker').addEventListener('click', e => {
+    if (!e.target.matches('[data-pick]')) return;
+    try { sessionStorage.setItem(CARRY, JSON.stringify({ texts: product.zones.map(z => cz.state.zones[z.id].text) })); } catch { /* ignore */ }
+  });
+}
+
+// ---------- demo bar (?demo=1): examples, auto-rotate, download a picture ----------
+if (q.get('demo') && $('#demo') && (product.demos || []).length) {
+  const bar = $('#demo'); bar.hidden = false;
+  bar.innerHTML = `<span class="demo-l">Try an example:</span>${product.demos.map((d, i) => `<button type="button" class="chip" data-demo="${i}">${esc(d.name)}</button>`).join('')}
+    <label class="demo-r"><input type="checkbox" id="spin"> Auto-rotate</label><button type="button" class="chip" id="shot">Download picture</button>`;
+  bar.addEventListener('click', async e => {
+    if (e.target.dataset.demo !== undefined) { cz.applyDemo(product.demos[+e.target.dataset.demo]); cz.setView('front'); buildPanel(); update(); }
+    else if (e.target.id === 'shot') { const a = document.createElement('a'); a.href = cz.snapshot(); a.download = `${slug}-design.png`; a.click(); }
+  });
+  bar.addEventListener('input', e => { if (e.target.id === 'spin') cz.autoRotate = e.target.checked; });
+}
 
 // ---------- shareable link page: share the saved design ----------
 function showShare(id) {

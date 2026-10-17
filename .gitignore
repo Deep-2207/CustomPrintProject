@@ -35,3 +35,6 @@ desktop.ini
 .claude/
 t_preview.html
 *.log
+
+# test output
+platform/tests/out/
